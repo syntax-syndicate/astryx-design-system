@@ -42,7 +42,7 @@ function Harness({
     <PowerSearch
       config={config}
       filters={stableFilters}
-      onFiltersChange={() => {}}
+      onChange={() => {}}
       resultCount={2}
     />
   );

@@ -55,6 +55,7 @@ import {
 import {mergeProps} from '../utils';
 import type {BaseProps} from '../BaseProps';
 import {themeProps} from '../utils/themeProps';
+import {useTranslator} from '../i18n';
 
 const styles = stylex.create({
   dropdown: {
@@ -111,9 +112,7 @@ export interface DropdownMenuSection {
 }
 
 export type DropdownMenuOption =
-  | DropdownMenuItemData
-  | DropdownMenuDivider
-  | DropdownMenuSection;
+  DropdownMenuItemData | DropdownMenuDivider | DropdownMenuSection;
 
 // =============================================================================
 // Props
@@ -149,8 +148,7 @@ interface DropdownMenuCompoundProps extends DropdownMenuBaseProps {
 }
 
 export type DropdownMenuProps =
-  | DropdownMenuDataProps
-  | DropdownMenuCompoundProps;
+  DropdownMenuDataProps | DropdownMenuCompoundProps;
 
 // =============================================================================
 // DropdownMenu
@@ -176,10 +174,13 @@ export type DropdownMenuProps =
  * />
  * ```
  */
-const DEFAULT_BUTTON = {label: 'Menu'} as const;
+// When the consumer doesn't pass `button`, the resolved default label is
+// looked up at render time so it respects the active InternationalizationProvider
+// locale.
+const DEFAULT_BUTTON_I18N_KEY = '@astryx.dropdownMenu.label' as const;
 
 export function DropdownMenu({
-  button = DEFAULT_BUTTON,
+  button,
   isMenuOpen: controlledIsOpen,
   onOpenChange,
   menuWidth,
@@ -192,11 +193,14 @@ export function DropdownMenu({
   'data-testid': testId,
   ...props
 }: DropdownMenuProps) {
+  const t = useTranslator();
+  const resolvedButton = button ?? {label: t(DEFAULT_BUTTON_I18N_KEY)};
+
   const items = ('items' in props ? props.items : undefined) ?? [];
   const children = props.children;
 
   const menuId = useId();
-  const menuSize = button?.size ?? 'md';
+  const menuSize = resolvedButton.size ?? 'md';
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   // Open state
@@ -373,9 +377,9 @@ export function DropdownMenu({
   );
 
   // Icon-only
-  const isIconOnly = button.isIconOnly === true;
+  const isIconOnly = resolvedButton.isIconOnly === true;
   const resolvedEndContent =
-    button.endContent ??
+    resolvedButton.endContent ??
     (hasChevron && !isIconOnly ? (
       <Icon icon="chevronDown" size="sm" color="inherit" />
     ) : undefined);
@@ -401,11 +405,11 @@ export function DropdownMenu({
   return (
     <>
       <Button
-        {...button}
+        {...resolvedButton}
         ref={el => {
           buttonRef.current = el;
           popover.triggerRef(el);
-          const consumerRef = button.ref;
+          const consumerRef = resolvedButton.ref;
           if (typeof consumerRef === 'function') {
             consumerRef(el);
           } else if (consumerRef) {
@@ -414,7 +418,7 @@ export function DropdownMenu({
             /* eslint-enable react-compiler/react-compiler */
           }
         }}
-        tooltip={isOpen ? undefined : button.tooltip}
+        tooltip={isOpen ? undefined : resolvedButton.tooltip}
         endContent={resolvedEndContent}
         onClick={handleButtonClick}
         onKeyDown={handleButtonKeyDown}
@@ -432,7 +436,7 @@ export function DropdownMenu({
           // Give the menu an accessible name from its trigger's label, so
           // screen readers announce e.g. "Actions menu" rather than an unnamed
           // menu (menus-13).
-          aria-label={button.label}
+          aria-label={resolvedButton.label}
           onKeyDown={listKeyDown}
           {...mergeProps(
             themeProps('dropdown-menu'),
